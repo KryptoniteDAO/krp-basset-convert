@@ -1,0 +1,2 @@
+bd70805bfec8ae57b60f1fc110f8a13ec836e593f01fb9d7dd896fae92b2406d  krp_basset_converter.wasm
+65c24202c889498a100da22af9bd404809299b0df99a042873d9396ae4b05b4d  krp_basset_token.wasm

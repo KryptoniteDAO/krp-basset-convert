@@ -1,0 +1,2 @@
+9153d79b85bc29369ae6e90e4d80e4c53e0fa22ab89f220b7842f69d71c0d32c  target/wasm32-unknown-unknown/release/krp_basset_converter.wasm
+e32e234332fbdc38586e8cd4251c87ce62ef26147a078d46e89672f0f5aa29b0  target/wasm32-unknown-unknown/release/krp_basset_token.wasm

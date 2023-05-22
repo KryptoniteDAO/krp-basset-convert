@@ -1,0 +1,39 @@
+[package]
+name = "krp_basset_token"
+version = "0.0.1"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all init/handle/query exports
+library = []
+
+[dependencies]
+cw20 = { version = "0.16.0" }
+cosmwasm-std = "1.0.0"
+cosmwasm-storage = "1.0.0"
+cw-storage-plus = "0.13.2"
+schemars = "0.8.8"
+cw20-legacy = { path = "../../packages/cw20-legacy", version = "1.2.0" , features = ["library"]}
+serde = { version = "1.0.137", default-features = false, features = ["derive"] }
+snafu = { version = "0.7.3" }
+basset = { path = "../../packages/basset", default-features = false, version = "0.3.2"}
+
+[dev-dependencies]
+# we only need to enable this if we use integration tests
+#cosmwasm-vm = { version = "1.0.0" }
+cosmwasm-schema = { version = "0.16.0", default-features = false  }
