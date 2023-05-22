@@ -1,10 +1,8 @@
-[![codecov](https://codecov.io/gh/Anchor-Protocol/anchor-bEth-contracts/branch/main/graph/badge.svg?token=1EGN3Z1YDN)](https://codecov.io/gh/Anchor-Protocol/anchor-bEth-contracts)
 
-# Anchor bEth Contracts
 
-This monorepository contains the source code for the smart contracts implementing bEth on the [Terra](https://terra.money) blockchain.
+# Kryptonite bAsset Contracts
 
-You can find information about the architecture, usage, and function of the smart contracts on the official Anchor documentation [site](https://anchorprotocol.com/).
+
 ## Development
 
 ### Environment Setup
@@ -59,7 +57,7 @@ This performs several optimizations which can significantly reduce the final siz
 
 ## License
 
-Copyright 2021 Anchor Protocol
+Copyright 2023 Kryptonite
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
