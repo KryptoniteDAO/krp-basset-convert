@@ -37,7 +37,6 @@ cw-storage-plus = "0.13.2"
 schemars = "0.8.8"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 basset = { path = "../../packages/basset", default-features = false, version = "0.3.2"}
-cosmwasm-bignumber =  { path = "../../packages/bignumber", version = "3.0.0"}
 
 
 [dev-dependencies]
