@@ -1,0 +1,34 @@
+{
+  "convertPairs": [
+    {
+      "native_denom": "ibc/326D2E9FFBF7AE39CC404A58DED81054E23F107BC8D926D5D981C0231F1ECD2D",
+      "converter": {
+        "codeId": 0,
+        "address": "sei16lwqvzljtvas043u45tvh8le097xeved6k7nxajwzh85zte7syms22j0ps"
+      },
+      "btoken": {
+        "codeId": 0,
+        "address": "sei1rp8hkjedps3xnpjzrmdrmh3tghjgkmje0akd2qqxlxqa0vz0g63snw78gx"
+      },
+      "custody": {
+        "codeId": 0,
+        "address": "sei"
+      }
+    },
+    {
+      "native_denom": "ibc/53B6183707AF4C744EE26815613D9C4D0DE40E2C18083EA5B384FAF4F6BB0C06",
+      "converter": {
+        "codeId": 0,
+        "address": "sei1s5qxh87j33n059xgpfghgxv26fkyr2kzz76nncqwaapcp64nj95s38dcjr"
+      },
+      "btoken": {
+        "codeId": 0,
+        "address": "sei17qz3cgc9ehyt8n0sv8cyk3ahc4pl9qxhxtf883kc8tef4lfp7hvsk885el"
+      },
+      "custody": {
+        "codeId": 0,
+        "address": "sei"
+      }
+    }
+  ]
+}
