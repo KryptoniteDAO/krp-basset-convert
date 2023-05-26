@@ -6,7 +6,13 @@
     "owner"
   ],
   "properties": {
-    "anchor_token_address": {
+    "basset_token_address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "native_denom": {
       "type": [
         "string",
         "null"
@@ -14,12 +20,6 @@
     },
     "owner": {
       "type": "string"
-    },
-    "wormhole_token_address": {
-      "type": [
-        "string",
-        "null"
-      ]
     }
   }
 }

@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use anchor_beth_token::msg::TokenInstantiateMsg;
+use krp_basset_token::msg::{MigrateMsg, TokenInstantiateMsg};
 use cw20::{
     AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
     TokenInfoResponse,
@@ -17,8 +17,9 @@ fn main() {
     remove_schemas(&out_dir).unwrap();
 
     export_schema(&schema_for!(TokenInstantiateMsg), &out_dir);
-    export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
+    export_schema(&schema_for!(ExecuteMsg), &out_dir);
+    export_schema(&schema_for!(MigrateMsg), &out_dir);
     export_schema(&schema_for!(AllowanceResponse), &out_dir);
     export_schema(&schema_for!(BalanceResponse), &out_dir);
     export_schema(&schema_for!(TokenInfoResponse), &out_dir);
