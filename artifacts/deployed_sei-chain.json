@@ -1,0 +1,34 @@
+{
+  "convertPairs": [
+    {
+      "native_denom": "factory/sei1h3ukufh4lhacftdf6kyxzum4p86rcnel35v4jk/stsei",
+      "converter": {
+        "codeId": 480,
+        "address": "sei1n7t427sedd87g4pjmsqkt65jxhy6chc92c40unxeewse5yhzsmmq4jvzc2"
+      },
+      "btoken": {
+        "codeId": 481,
+        "address": "sei16wdlwc88snvvv5t9nmzq5v9z5twde3a62ygvz707fksc2gtlgdaqexr5fv"
+      },
+      "custody": {
+        "codeId": 482,
+        "address": "sei1hrkksh0xtvapts5j0h9qpk5rtd708htvd09ueyancss4u7hxhqdsw3zgln"
+      }
+    },
+    {
+      "native_denom": "factory/sei1h3ukufh4lhacftdf6kyxzum4p86rcnel35v4jk/slsdi",
+      "converter": {
+        "codeId": 483,
+        "address": "sei164ajnkjuzy26j80cq2ejpkw2ts3362dps2udhvcfy4m7qlpxsl7sg5fd3a"
+      },
+      "btoken": {
+        "codeId": 484,
+        "address": "sei18guef8kdt3ha05p8hjymx8y6d8ttl3echjxp9zdlgzu87j0yy2hsvh2txn"
+      },
+      "custody": {
+        "codeId": 485,
+        "address": "sei10tudge9pay0jcw98an63k5cqruy2ydlumuy4ss0sdq6l89g9apgqv0kzwt"
+      }
+    }
+  ]
+}
