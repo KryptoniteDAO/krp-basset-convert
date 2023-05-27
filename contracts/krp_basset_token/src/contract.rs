@@ -105,13 +105,13 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response>
 #[cfg(test)]
 mod test {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
     use cosmwasm_std::{Addr, Api};
     use cw20::MinterResponse;
 
     #[test]
     fn proper_migrate() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies_with_balance(&[]);
         let first_minter = "first_minter";
         let new_minter = "new_minter";
 
@@ -120,10 +120,11 @@ mod test {
             symbol: "BASSET".to_string(),
             decimals: 6,
             initial_balances: vec![],
-            mint: Some(MinterResponse {
-                minter: first_minter.to_string(),
-                cap: None,
-            }),
+            mint: first_minter.to_string(),
+            // mint: Some(MinterResponse {
+            //     minter: first_minter.to_string(),
+            //     cap: None,
+            // }),
         };
 
         let info = mock_info("sender", &[]);
