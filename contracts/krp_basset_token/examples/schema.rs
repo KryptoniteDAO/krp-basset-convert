@@ -6,7 +6,7 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 use krp_basset_token::msg::{MigrateMsg, TokenInstantiateMsg};
 use cw20::{
     AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
-    TokenInfoResponse,
+    TokenInfoResponse, MinterResponse
 };
 use cw20_legacy::msg::{ExecuteMsg, QueryMsg};
 
@@ -25,4 +25,5 @@ fn main() {
     export_schema(&schema_for!(TokenInfoResponse), &out_dir);
     export_schema(&schema_for!(AllAllowancesResponse), &out_dir);
     export_schema(&schema_for!(AllAccountsResponse), &out_dir);
+    export_schema(&schema_for!(MinterResponse), &out_dir);
 }

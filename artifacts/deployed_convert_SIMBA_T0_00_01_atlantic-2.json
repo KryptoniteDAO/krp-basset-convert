@@ -1,0 +1,34 @@
+{
+  "convertPairs": [
+    {
+      "native_denom": "ibc/326D2E9FFBF7AE39CC404A58DED81054E23F107BC8D926D5D981C0231F1ECD2D",
+      "converter": {
+        "codeId": 796,
+        "address": "sei1yfgywf4szg0pnsafzaleqmu8wkdgtfqzk24zm953swpkenf9mufqqja49w"
+      },
+      "btoken": {
+        "codeId": 797,
+        "address": "sei1tsdj0dkj5fxgcjj4ejrsgee748cvjanjgv7m028f97h0fwnmv05qhakkf2"
+      },
+      "custody": {
+        "codeId": 798,
+        "address": "sei1z0gn748nu0a6qtjnjrsxpmd08kzp5fvdfh0cl5pq8hf4sd02z3qs45t6z9"
+      }
+    },
+    {
+      "native_denom": "ibc/53B6183707AF4C744EE26815613D9C4D0DE40E2C18083EA5B384FAF4F6BB0C06",
+      "converter": {
+        "codeId": 799,
+        "address": "sei1lc9duejll8hl5jsxjsg00d868pw86jmlx5drljxxp3sx6aslpw7spqxmw5"
+      },
+      "btoken": {
+        "codeId": 800,
+        "address": "sei14ly3vcx635c4ex6n4qxlug6ya9pjxmcy0jvn8qu4yhxpzs2gtc0sn782kr"
+      },
+      "custody": {
+        "codeId": 801,
+        "address": "sei16sq8zh9042nqv2z8ekw6qz4xzsmrfv4nt26vqm93kmnw0ra53zsqxzkk2j"
+      }
+    }
+  ]
+}
