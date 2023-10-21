@@ -159,7 +159,7 @@ pub(crate) fn execute_convert_to_native(
     sender: String,
 ) -> StdResult<Response> {
     let config = read_config(deps.storage)?;
-    if config.native_denom.is_none() || config.native_denom.is_none() {
+    if config.basset_token_address.is_none() || config.native_denom.is_none() {
         return Err(StdError::generic_err(
             "native or basset token must be registered first",
         ));
