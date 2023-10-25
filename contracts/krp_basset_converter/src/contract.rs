@@ -111,6 +111,12 @@ pub(crate) fn execute_convert_to_basset(
     }
     let coin_denom = config.native_denom.unwrap();
 
+    if info.funds.len() != 1  {
+        return Err(StdError::generic_err(
+            "The execute_convert_to_basset function only receives one registered native denom.",
+        ));
+    }
+
     let coin = info
         .funds
         .iter()
