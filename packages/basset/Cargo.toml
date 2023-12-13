@@ -23,10 +23,11 @@ backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
 cw20 = { version = "0.16.0" }
-cosmwasm-storage = { version = "1.0.0" }
-cosmwasm-std = "1.0.0"
+cosmwasm-storage = { version = "1.2.5" }
+cosmwasm-std = "1.5.0"
 schemars = "0.8.11"
 serde = { version = "1.0.147", default-features = false, features = ["derive"] }
+cosmwasm-bignumber =  { path = "../bignumber", version = "3.0.0"}
 
 [dev-dependencies]
-cosmwasm-vm = { version = "1.0.0" }
+#cosmwasm-vm = { version = "1.0.0" }

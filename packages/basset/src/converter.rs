@@ -19,10 +19,18 @@ pub enum ExecuteMsg {
     RegisterTokens {
         native_denom: String,
         basset_token_address: String,
+        denom_decimals: u8,
     },
 
     // convert native denom to basset token
     ConvertNativeToBasset {},
+
+    SetOwner {
+        new_owner_addr: String,
+    },
+
+    AcceptOwnership {
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -36,6 +44,7 @@ pub enum Cw20HookMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Config {},
+    NewOwner {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -43,6 +52,11 @@ pub struct ConfigResponse {
     pub owner: String,
     pub native_denom: Option<String>,
     pub basset_token_address: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct NewOwnerResponse {
+    pub new_owner: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

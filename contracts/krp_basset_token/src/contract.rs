@@ -10,8 +10,9 @@ use cw20_legacy::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 use crate::handler::*;
 use crate::msg::{MigrateMsg, TokenInstantiateMsg};
-use cw20_legacy::state::{MinterData, TOKEN_INFO};
+use crate::state::store_reward_contract;
 use cw20::MinterResponse;
+use cw20_legacy::state::{MinterData, TOKEN_INFO};
 use cw20_legacy::ContractError;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -21,6 +22,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: TokenInstantiateMsg,
 ) -> StdResult<Response> {
+    
+    let api = deps.api;
+    let reward_contract =api.addr_canonicalize(&msg.reward_contract)?;
+    store_reward_contract(deps.storage, &reward_contract)?;
 
     cw20_instantiate(
         deps,
@@ -107,13 +112,13 @@ mod test {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
     use cosmwasm_std::{Addr, Api};
-    use cw20::MinterResponse;
 
     #[test]
     fn proper_migrate() {
         let mut deps = mock_dependencies_with_balance(&[]);
         let first_minter = "first_minter";
         let new_minter = "new_minter";
+        let reward_contract = "reward".to_string();
 
         let init_msg = TokenInstantiateMsg {
             name: "bonded Native Coin".to_string(),
@@ -121,10 +126,7 @@ mod test {
             decimals: 6,
             initial_balances: vec![],
             mint: first_minter.to_string(),
-            // mint: Some(MinterResponse {
-            //     minter: first_minter.to_string(),
-            //     cap: None,
-            // }),
+            reward_contract,
         };
 
         let info = mock_info("sender", &[]);

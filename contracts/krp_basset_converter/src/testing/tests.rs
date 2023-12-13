@@ -1,18 +1,19 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    from_binary, to_binary, Attribute, CosmosMsg, StdError, SubMsg, Uint128, WasmMsg,
+    from_json, to_json_binary, Attribute, BankMsg, Coin, CosmosMsg, StdError, SubMsg, Uint128,
+    WasmMsg,
 };
 
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::mock_dependencies;
-use beth::converter::Cw20HookMsg::{ConvertAnchorToWormhole, ConvertWormholeToAnchor};
-use beth::converter::ExecuteMsg::{Receive, RegisterTokens};
-use beth::converter::{ConfigResponse, InstantiateMsg, QueryMsg};
+use basset::converter::Cw20HookMsg::ConvertBassetToNative;
+use basset::converter::ExecuteMsg::{self, Receive, RegisterTokens};
+use basset::converter::{ConfigResponse, InstantiateMsg, QueryMsg};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 const MOCK_OWNER_ADDR: &str = "owner0000";
-const MOCK_ANCHOR_TOKEN_CONTRACT_ADDR: &str = "beth_token0000";
-const MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR: &str = "wormhole_token0000";
+const MOCK_BASSET_TOKEN_CONTRACT_ADDR: &str = "cw20_token0000";
+const MOCK_NATIVE_CONTRACT_ADDR: &str = "native_token0000";
 
 fn default_init() -> InstantiateMsg {
     InstantiateMsg {
@@ -31,19 +32,19 @@ fn proper_init() {
     assert_eq!(0, res.messages.len());
 
     let res = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
-    let config_response: ConfigResponse = from_binary(&res).unwrap();
+    let config_response: ConfigResponse = from_json(&res).unwrap();
     assert_eq!(
         config_response,
         ConfigResponse {
             owner: MOCK_OWNER_ADDR.to_string(),
-            anchor_token_address: None,
-            wormhole_token_address: None,
+            native_denom: None,
+            basset_token_address: None,
         }
     );
 }
 
 #[test]
-fn proper_convert_to_anchor() {
+fn proper_convert_to_basset() {
     let mut deps = mock_dependencies(&[]);
     let init_msg = default_init();
 
@@ -54,11 +55,12 @@ fn proper_convert_to_anchor() {
     assert_eq!(0, res.messages.len());
 
     let update_config = RegisterTokens {
-        anchor_token_address: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-        wormhole_token_address: MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR.to_string(),
+        basset_token_address: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+        native_denom: MOCK_NATIVE_CONTRACT_ADDR.to_string(),
+        denom_decimals: 8,
     };
 
-    // set anchor and wormhole decimals
+    // set basset and native decimals
     deps.querier.set_decimals(6, 8);
 
     let res = execute(
@@ -73,27 +75,26 @@ fn proper_convert_to_anchor() {
         Attribute::new("action", "register_token_contracts")
     );
 
-    let receive_msg = Receive(Cw20ReceiveMsg {
-        sender: sender.to_string(),
-        amount: Uint128::new(100000000),
-        msg: to_binary(&ConvertWormholeToAnchor {}).unwrap(),
-    });
-
+    let msg = ExecuteMsg::ConvertNativeToBasset {};
     // unauthorized request
-    let invalid_info = mock_info("invalid", &[]);
-    let error_res =
-        execute(deps.as_mut(), mock_env(), invalid_info, receive_msg.clone()).unwrap_err();
-    assert_eq!(error_res, StdError::generic_err("unauthorized"));
+    // Native conversion of basset does not require permission, this test case does not require it
+    // let invalid_info = mock_info("invalid", &[Coin::new(100000000u128, MOCK_NATIVE_CONTRACT_ADDR)]);
+    // let error_res =
+    //     execute(deps.as_mut(), mock_env(), invalid_info, msg.clone()).unwrap_err();
+    // assert_eq!(error_res, StdError::generic_err("unauthorized"));
 
     // successful request
-    let wormhole_info = mock_info(MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR, &[]);
-    let res = execute(deps.as_mut(), mock_env(), wormhole_info, receive_msg).unwrap();
+    let native_info = mock_info(
+        sender,
+        &[Coin::new(100000000u128, MOCK_NATIVE_CONTRACT_ADDR)],
+    );
+    let res = execute(deps.as_mut(), mock_env(), native_info, msg.clone()).unwrap();
     assert_eq!(res.messages.len(), 1);
     assert_eq!(
         res.messages[0],
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Mint {
+            contract_addr: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Mint {
                 recipient: sender.to_string(),
                 // 100000000 / 10^2 = 1000000
                 amount: Uint128::new(1000000)
@@ -103,30 +104,32 @@ fn proper_convert_to_anchor() {
         }))
     );
 
-    //cannot convert less than 100 micro wormhole
-    let receive_msg = Receive(Cw20ReceiveMsg {
-        sender: sender.to_string(),
-        amount: Uint128::new(1),
-        msg: to_binary(&ConvertWormholeToAnchor {}).unwrap(),
-    });
+    //cannot convert less than 100 micro native
+    // let receive_msg = Receive(Cw20ReceiveMsg {
+    //     sender: sender.to_string(),
+    //     amount: Uint128::new(1),
+    //     msg: to_json_binary(&ConvertBassetToNative {}).unwrap(),
+    // });
 
     // unauthorized request
-    let invalid_info = mock_info("invalid", &[]);
-    let error_res =
-        execute(deps.as_mut(), mock_env(), invalid_info, receive_msg.clone()).unwrap_err();
-    assert_eq!(error_res, StdError::generic_err("unauthorized"));
+    // let invalid_info = mock_info("invalid", &[Coin::new(1u128, MOCK_NATIVE_CONTRACT_ADDR)]);
+    // let error_res =
+    //     execute(deps.as_mut(), mock_env(), invalid_info, msg.clone()).unwrap_err();
+    // assert_eq!(error_res, StdError::generic_err("unauthorized"));
 
     // successful request
-    let wormhole_info = mock_info(MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR, &[]);
-    let res = execute(deps.as_mut(), mock_env(), wormhole_info, receive_msg).unwrap_err();
+    let native_info = mock_info(sender, &[Coin::new(1u128, MOCK_NATIVE_CONTRACT_ADDR)]);
+    let res = execute(deps.as_mut(), mock_env(), native_info, msg).unwrap_err();
     assert_eq!(
         res,
-        StdError::generic_err("cannot convert; conversion is only possible for amounts greater than 100 wormhole token")
+        StdError::generic_err(
+            "cannot convert; conversion is only possible for amounts greater than 100 native token"
+        )
     );
 }
 
 #[test]
-fn proper_convert_to_wormhole() {
+fn proper_convert_to_native() {
     let mut deps = mock_dependencies(&[]);
     let init_msg = default_init();
 
@@ -137,11 +140,12 @@ fn proper_convert_to_wormhole() {
     assert_eq!(0, res.messages.len());
 
     let update_config = RegisterTokens {
-        anchor_token_address: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-        wormhole_token_address: MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR.to_string(),
+        basset_token_address: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+        native_denom: MOCK_NATIVE_CONTRACT_ADDR.to_string(),
+        denom_decimals: 8,
     };
 
-    // set anchor and wormhole decimals
+    // set basset and native decimals
     deps.querier.set_decimals(6, 8);
 
     let res = execute(
@@ -159,7 +163,7 @@ fn proper_convert_to_wormhole() {
     let receive_msg = Receive(Cw20ReceiveMsg {
         sender: sender.to_string(),
         amount: Uint128::new(100000000),
-        msg: to_binary(&ConvertAnchorToWormhole {}).unwrap(),
+        msg: to_json_binary(&ConvertBassetToNative {}).unwrap(),
     });
 
     // unauthorized request
@@ -169,27 +173,25 @@ fn proper_convert_to_wormhole() {
     assert_eq!(error_res, StdError::generic_err("unauthorized"));
 
     // successful
-    let beth_info = mock_info(MOCK_ANCHOR_TOKEN_CONTRACT_ADDR, &[]);
-    let res = execute(deps.as_mut(), mock_env(), beth_info, receive_msg).unwrap();
+    let basset_info = mock_info(MOCK_BASSET_TOKEN_CONTRACT_ADDR, &[]);
+    let res = execute(deps.as_mut(), mock_env(), basset_info, receive_msg).unwrap();
     assert_eq!(res.messages.len(), 2);
     assert_eq!(
         res.messages[0],
-        SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: sender.to_string(),
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: sender.to_string(),
+            amount: vec![Coin {
                 // 100000000 * 10^2 = 10000000000
-                amount: Uint128::new(10000000000)
-            })
-            .unwrap(),
-            funds: vec![]
+                amount: Uint128::new(10000000000),
+                denom: MOCK_NATIVE_CONTRACT_ADDR.to_string(),
+            }],
         }))
     );
     assert_eq!(
         res.messages[1],
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Burn {
+            contract_addr: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Burn {
                 amount: Uint128::new(100000000)
             })
             .unwrap(),
@@ -199,7 +201,7 @@ fn proper_convert_to_wormhole() {
 }
 
 #[test]
-fn proper_convert_to_anchor_with_more_decimals() {
+fn proper_convert_to_basset_with_more_decimals() {
     let mut deps = mock_dependencies(&[]);
     let init_msg = default_init();
 
@@ -210,11 +212,12 @@ fn proper_convert_to_anchor_with_more_decimals() {
     assert_eq!(0, res.messages.len());
 
     let update_config = RegisterTokens {
-        anchor_token_address: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-        wormhole_token_address: MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR.to_string(),
+        basset_token_address: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+        native_denom: MOCK_NATIVE_CONTRACT_ADDR.to_string(),
+        denom_decimals: 8,
     };
 
-    // set anchor and wormhole decimals
+    // set basset and native decimals
     deps.querier.set_decimals(10, 8);
 
     let res = execute(
@@ -229,29 +232,33 @@ fn proper_convert_to_anchor_with_more_decimals() {
         Attribute::new("action", "register_token_contracts")
     );
 
-    let receive_msg = Receive(Cw20ReceiveMsg {
-        sender: sender.to_string(),
-        amount: Uint128::new(100000000),
-        msg: to_binary(&ConvertWormholeToAnchor {}).unwrap(),
-    });
+    // let receive_msg = Receive(Cw20ReceiveMsg {
+    //     sender: sender.to_string(),
+    //     amount: Uint128::new(100000000),
+    //     msg: to_json_binary(&ConvertBassetToNative {}).unwrap(),
+    // });
 
-    // unauthorized request
-    let invalid_info = mock_info("invalid", &[]);
-    let error_res =
-        execute(deps.as_mut(), mock_env(), invalid_info, receive_msg.clone()).unwrap_err();
-    assert_eq!(error_res, StdError::generic_err("unauthorized"));
+    // // unauthorized request
+    // let invalid_info = mock_info("invalid", &[]);
+    // let error_res =
+    //     execute(deps.as_mut(), mock_env(), invalid_info, receive_msg.clone()).unwrap_err();
+    // assert_eq!(error_res, StdError::generic_err("unauthorized"));
 
+    let msg = ExecuteMsg::ConvertNativeToBasset {};
     // successful request
-    let wormhole_info = mock_info(MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR, &[]);
-    let res = execute(deps.as_mut(), mock_env(), wormhole_info, receive_msg).unwrap();
+    let native_info = mock_info(
+        sender,
+        &[Coin::new(100000000u128, MOCK_NATIVE_CONTRACT_ADDR)],
+    );
+    let res = execute(deps.as_mut(), mock_env(), native_info, msg).unwrap();
     assert_eq!(res.messages.len(), 1);
     assert_eq!(
         res.messages[0],
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Mint {
+            contract_addr: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Mint {
                 recipient: sender.to_string(),
-                //anchor decimals is bigger than wormhole then we should multiply with 10^2
+                //basset decimals is bigger than native then we should multiply with 10^2
                 // 100000000 * 10^2 = 10000000000
                 amount: Uint128::new(10000000000)
             })
@@ -262,7 +269,7 @@ fn proper_convert_to_anchor_with_more_decimals() {
 }
 
 #[test]
-fn proper_convert_to_wormhole_with_less_decimals() {
+fn proper_convert_to_native_with_less_decimals() {
     let mut deps = mock_dependencies(&[]);
     let init_msg = default_init();
 
@@ -273,11 +280,12 @@ fn proper_convert_to_wormhole_with_less_decimals() {
     assert_eq!(0, res.messages.len());
 
     let update_config = RegisterTokens {
-        anchor_token_address: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-        wormhole_token_address: MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR.to_string(),
+        basset_token_address: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+        native_denom: MOCK_NATIVE_CONTRACT_ADDR.to_string(),
+        denom_decimals: 8,
     };
 
-    // set anchor and wormhole decimals
+    // set basset and native decimals
     deps.querier.set_decimals(10, 8);
 
     let res = execute(
@@ -295,7 +303,7 @@ fn proper_convert_to_wormhole_with_less_decimals() {
     let receive_msg = Receive(Cw20ReceiveMsg {
         sender: sender.to_string(),
         amount: Uint128::new(100000000),
-        msg: to_binary(&ConvertAnchorToWormhole {}).unwrap(),
+        msg: to_json_binary(&ConvertBassetToNative {}).unwrap(),
     });
 
     // unauthorized request
@@ -305,28 +313,26 @@ fn proper_convert_to_wormhole_with_less_decimals() {
     assert_eq!(error_res, StdError::generic_err("unauthorized"));
 
     // successful
-    let beth_info = mock_info(MOCK_ANCHOR_TOKEN_CONTRACT_ADDR, &[]);
-    let res = execute(deps.as_mut(), mock_env(), beth_info, receive_msg).unwrap();
+    let basset_info = mock_info(MOCK_BASSET_TOKEN_CONTRACT_ADDR, &[]);
+    let res = execute(deps.as_mut(), mock_env(), basset_info, receive_msg).unwrap();
     assert_eq!(res.messages.len(), 2);
     assert_eq!(
         res.messages[0],
-        SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: sender.to_string(),
-                //anchor decimals is bigger than wormhole then we should divide with 10^2
+        SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: sender.to_string(),
+            amount: vec![Coin {
+                // basset decimals is bigger than native then we should divide with 10^2
                 // 100000000 * 10^2 = 1000000
-                amount: Uint128::new(1000000)
-            })
-            .unwrap(),
-            funds: vec![]
+                amount: Uint128::new(1000000),
+                denom: MOCK_NATIVE_CONTRACT_ADDR.to_string(),
+            }],
         }))
     );
     assert_eq!(
         res.messages[1],
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Burn {
+            contract_addr: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Burn {
                 amount: Uint128::new(100000000)
             })
             .unwrap(),
@@ -334,20 +340,20 @@ fn proper_convert_to_wormhole_with_less_decimals() {
         }))
     );
 
-    //cannot convert less than 100 micro wormhole
+    //cannot convert less than 100 micro native
     let receive_msg = Receive(Cw20ReceiveMsg {
         sender: sender.to_string(),
         amount: Uint128::new(1),
-        msg: to_binary(&ConvertAnchorToWormhole {}).unwrap(),
+        msg: to_json_binary(&ConvertBassetToNative {}).unwrap(),
     });
 
     // successful request
-    let wormhole_info = mock_info(MOCK_ANCHOR_TOKEN_CONTRACT_ADDR, &[]);
-    let res = execute(deps.as_mut(), mock_env(), wormhole_info, receive_msg).unwrap_err();
+    let native_info = mock_info(MOCK_BASSET_TOKEN_CONTRACT_ADDR, &[]);
+    let res = execute(deps.as_mut(), mock_env(), native_info, receive_msg).unwrap_err();
     assert_eq!(
         res,
         StdError::generic_err(
-            "cannot convert; conversion is only possible for amounts greater than 100 anchor token"
+            "cannot convert; conversion is only possible for amounts greater than 100 basset token"
         )
     );
 }
@@ -364,8 +370,9 @@ fn proper_update_config() {
     assert_eq!(0, res.messages.len());
 
     let update_config = RegisterTokens {
-        anchor_token_address: MOCK_ANCHOR_TOKEN_CONTRACT_ADDR.to_string(),
-        wormhole_token_address: MOCK_WORMHOLE_TOKEN_CONTRACT_ADDR.to_string(),
+        basset_token_address: MOCK_BASSET_TOKEN_CONTRACT_ADDR.to_string(),
+        native_denom: MOCK_NATIVE_CONTRACT_ADDR.to_string(),
+        denom_decimals: 8,
     };
 
     // unauthorized request
@@ -386,13 +393,13 @@ fn proper_update_config() {
     );
 
     let res = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
-    let config_response: ConfigResponse = from_binary(&res).unwrap();
+    let config_response: ConfigResponse = from_json(&res).unwrap();
     assert_eq!(
         config_response,
         ConfigResponse {
             owner: MOCK_OWNER_ADDR.to_string(),
-            anchor_token_address: Some("beth_token0000".to_string()),
-            wormhole_token_address: Some("wormhole_token0000".to_string()),
+            basset_token_address: Some("cw20_token0000".to_string()),
+            native_denom: Some("native_token0000".to_string()),
         }
     );
 }

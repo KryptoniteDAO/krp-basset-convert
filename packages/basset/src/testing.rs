@@ -1,4 +1,4 @@
-use crate::deduct_tax;
+use crate::querier::deduct_tax;
 use crate::mock_querier::mock_dependencies;
 use cosmwasm_std::{Coin, Decimal, Uint128};
 

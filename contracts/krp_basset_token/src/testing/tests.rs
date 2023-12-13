@@ -1,10 +1,9 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
-    coins, to_binary, Api, CosmosMsg, DepsMut, OwnedDeps, Querier, Storage, SubMsg, Uint128,
-    WasmMsg,
+    to_json_binary, Api, DepsMut, OwnedDeps, Querier, Storage, SubMsg, Uint128,
 };
 
-use beth::reward::ExecuteMsg::{DecreaseBalance, IncreaseBalance};
+//use basset::reward::ExecuteMsg::{DecreaseBalance, IncreaseBalance};
 use cw20::{Cw20ReceiveMsg, MinterResponse, TokenInfoResponse};
 use cw20_legacy::contract::{query_minter, query_token_info};
 use cw20_legacy::msg::ExecuteMsg;
@@ -14,6 +13,7 @@ use crate::msg::TokenInstantiateMsg;
 use crate::state::read_reward_contract;
 
 use std::borrow::BorrowMut;
+use std::vec;
 
 const MOCK_REWARD_CONTRACT_ADDR: &str = "bethreward0000";
 const MOCK_MINTER_ADDR: &str = "minter0000";
@@ -34,11 +34,11 @@ fn _do_init<S: Storage, A: Api, Q: Querier>(
 ) -> TokenInfoResponse {
     let reward_contract = MOCK_REWARD_CONTRACT_ADDR.to_string();
     let init_msg = TokenInstantiateMsg {
-        name: "bluna".to_string(),
-        symbol: "BLUNA".to_string(),
+        name: "batom".to_string(),
+        symbol: "BATOM".to_string(),
         decimals: 6,
         initial_balances: vec![],
-        mint: mint.clone(),
+        mint: mint.clone().unwrap().minter,
         reward_contract,
     };
 
@@ -50,8 +50,8 @@ fn _do_init<S: Storage, A: Api, Q: Querier>(
     assert_eq!(
         meta,
         TokenInfoResponse {
-            name: "bluna".to_string(),
-            symbol: "BLUNA".to_string(),
+            name: "batom".to_string(),
+            symbol: "BATOM".to_string(),
             decimals: 6,
             total_supply: Uint128::zero(),
         }
@@ -67,21 +67,22 @@ pub fn do_mint(deps: DepsMut, addr: String, amount: Uint128) {
     };
     let info = mock_info(MOCK_MINTER_ADDR, &[]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
-    assert_eq!(1, res.messages.len());
+    //assert_eq!(1, res.messages.len());
+    assert_eq!(0, res.messages.len());
 }
 
 #[test]
 fn proper_initialization() {
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies();
     let reward_contract = MOCK_REWARD_CONTRACT_ADDR.to_string();
     let reward_contract_raw = deps.api.addr_canonicalize(&reward_contract).unwrap();
 
     let init_msg = TokenInstantiateMsg {
-        name: "bluna".to_string(),
-        symbol: "BLUNA".to_string(),
+        name: "batom".to_string(),
+        symbol: "BATOM".to_string(),
         decimals: 6,
         initial_balances: vec![],
-        mint: None,
+        mint: MOCK_MINTER_ADDR.to_string(),
         reward_contract: reward_contract.clone(),
     };
     let info = mock_info(&reward_contract, &[]);
@@ -91,8 +92,8 @@ fn proper_initialization() {
     assert_eq!(
         query_token_info(deps.as_ref()).unwrap(),
         TokenInfoResponse {
-            name: "bluna".to_string(),
-            symbol: "BLUNA".to_string(),
+            name: "batom".to_string(),
+            symbol: "BATOM".to_string(),
             decimals: 6,
             total_supply: Uint128::zero(),
         }
@@ -106,7 +107,8 @@ fn proper_initialization() {
 
 #[test]
 fn transfer() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
+   // let mut deps = mock_dependencies(&coins(2, "token"));
+   let mut deps = mock_dependencies();
     let addr1 = "addr0001".to_string();
     let addr2 = "addr0002".to_string();
     let amount1 = Uint128::from(12340000u128);
@@ -123,32 +125,34 @@ fn transfer() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         res.messages,
-        vec![
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&DecreaseBalance {
-                    address: addr1,
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&IncreaseBalance {
-                    address: addr2,
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-        ]
+        vec![],
+        // vec![
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&DecreaseBalance {
+        //             address: addr1,
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&IncreaseBalance {
+        //             address: addr2,
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        // ]
     );
 }
 
 #[test]
 fn transfer_from() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
+//    let mut deps = mock_dependencies(&coins(2, "token"));
+    let mut deps = mock_dependencies();
     let addr1 = "addr0001".to_string();
     let addr2 = "addr0002".to_string();
     let addr3 = "addr0003".to_string();
@@ -175,32 +179,34 @@ fn transfer_from() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         res.messages,
-        vec![
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&DecreaseBalance {
-                    address: addr1,
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&IncreaseBalance {
-                    address: addr2,
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-        ]
+        vec![],
+        // vec![
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&DecreaseBalance {
+        //             address: addr1,
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&IncreaseBalance {
+        //             address: addr2,
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        // ]
     );
 }
 
 #[test]
 fn mint() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
+    //let mut deps = mock_dependencies(&coins(2, "token"));
+    let mut deps = mock_dependencies();
     let addr = "addr0000".to_string();
 
     do_init_with_minter(deps.borrow_mut(), MOCK_MINTER_ADDR.to_string(), None);
@@ -214,21 +220,23 @@ fn mint() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         res.messages,
-        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&IncreaseBalance {
-                address: addr,
-                amount: Uint128::new(1u128),
-            })
-            .unwrap(),
-            funds: vec![],
-        })),]
+        vec![],
+        // vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //     contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //     msg: to_json_binary(&IncreaseBalance {
+        //         address: addr,
+        //         amount: Uint128::new(1u128),
+        //     })
+        //     .unwrap(),
+        //     funds: vec![],
+        // })),]
     );
 }
 
 #[test]
 fn burn() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
+//    let mut deps = mock_dependencies(&coins(2, "token"));
+    let mut deps = mock_dependencies();
     let addr = "addr0000".to_string();
     let amount1 = Uint128::from(12340000u128);
 
@@ -243,21 +251,23 @@ fn burn() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         res.messages,
-        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&DecreaseBalance {
-                address: addr,
-                amount: Uint128::new(1u128),
-            })
-            .unwrap(),
-            funds: vec![],
-        })),]
+        vec![],
+        // vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //     contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //     msg: to_json_binary(&DecreaseBalance {
+        //         address: addr,
+        //         amount: Uint128::new(1u128),
+        //     })
+        //     .unwrap(),
+        //     funds: vec![],
+        // })),]
     );
 }
 
 #[test]
 fn burn_from() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
+//    let mut deps = mock_dependencies(&coins(2, "token"));
+    let mut deps = mock_dependencies();
     let addr = "addr0000".to_string();
     let addr1 = "addr0001".to_string();
     let amount1 = Uint128::from(12340000u128);
@@ -282,21 +292,23 @@ fn burn_from() {
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         res.messages,
-        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-            msg: to_binary(&DecreaseBalance {
-                address: addr,
-                amount: Uint128::new(1u128),
-            })
-            .unwrap(),
-            funds: vec![],
-        })),]
+        vec![],
+        // vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //     contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //     msg: to_json_binary(&DecreaseBalance {
+        //         address: addr,
+        //         amount: Uint128::new(1u128),
+        //     })
+        //     .unwrap(),
+        //     funds: vec![],
+        // })),]
     );
 }
 
 #[test]
 fn send() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
+//    let mut deps = mock_dependencies(&coins(2, "token"));
+    let mut deps = mock_dependencies();
     let addr1 = "addr0001".to_string();
     let dummny_contract_addr = "dummy".to_string();
     let amount1 = Uint128::from(12340000u128);
@@ -313,41 +325,42 @@ fn send() {
     let msg = ExecuteMsg::Send {
         contract: dummny_contract_addr.clone(),
         amount: Uint128::new(1u128),
-        msg: to_binary(&dummy_msg).unwrap(),
+        msg: to_json_binary(&dummy_msg).unwrap(),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    assert_eq!(res.messages.len(), 3);
+    // assert_eq!(res.messages.len(), 3);
+    assert_eq!(res.messages.len(), 1);
+    //assert_eq!(
+        //res.messages[0..2].to_vec(),
+        // vec![
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&DecreaseBalance {
+        //             address: addr1.clone(),
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&IncreaseBalance {
+        //             address: dummny_contract_addr.clone(),
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        // ]
+    //);
     assert_eq!(
-        res.messages[0..2].to_vec(),
-        vec![
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&DecreaseBalance {
-                    address: addr1.clone(),
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&IncreaseBalance {
-                    address: dummny_contract_addr.clone(),
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-        ]
-    );
-    assert_eq!(
-        res.messages[2],
+        res.messages[0],
         SubMsg::new(
             Cw20ReceiveMsg {
                 sender: addr1,
                 amount: Uint128::new(1),
-                msg: to_binary(&dummy_msg).unwrap(),
+                msg: to_json_binary(&dummy_msg).unwrap(),
             }
             .into_cosmos_msg(dummny_contract_addr)
             .unwrap()
@@ -357,7 +370,8 @@ fn send() {
 
 #[test]
 fn send_from() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
+//    let mut deps = mock_dependencies(&coins(2, "token"));
+    let mut deps = mock_dependencies();
     let addr1 = "addr0001".to_string();
     let addr2 = "addr0002".to_string();
     let dummny_contract_addr = "dummy".to_string();
@@ -384,42 +398,43 @@ fn send_from() {
         owner: addr1.clone(),
         contract: dummny_contract_addr.clone(),
         amount: Uint128::new(1u128),
-        msg: to_binary(&dummy_msg).unwrap(),
+        msg: to_json_binary(&dummy_msg).unwrap(),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    assert_eq!(res.messages.len(), 3);
-    assert_eq!(
-        res.messages[0..2].to_vec(),
-        vec![
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&DecreaseBalance {
-                    address: addr1,
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
-                msg: to_binary(&IncreaseBalance {
-                    address: dummny_contract_addr.clone(),
-                    amount: Uint128::new(1u128),
-                })
-                .unwrap(),
-                funds: vec![],
-            })),
-        ]
-    );
+    //assert_eq!(res.messages.len(), 3);
+    assert_eq!(res.messages.len(), 1);
+    //assert_eq!(
+        // res.messages[0..2].to_vec(),
+        // vec![
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&DecreaseBalance {
+        //             address: addr1,
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        //     SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        //         contract_addr: MOCK_REWARD_CONTRACT_ADDR.to_string(),
+        //         msg: to_json_binary(&IncreaseBalance {
+        //             address: dummny_contract_addr.clone(),
+        //             amount: Uint128::new(1u128),
+        //         })
+        //         .unwrap(),
+        //         funds: vec![],
+        //     })),
+        // ]
+    //);
 
     assert_eq!(
-        res.messages[2],
+        res.messages[0],
         SubMsg::new(
             Cw20ReceiveMsg {
                 sender: addr2,
                 amount: Uint128::new(1),
-                msg: to_binary(&dummy_msg).unwrap(),
+                msg: to_json_binary(&dummy_msg).unwrap(),
             }
             .into_cosmos_msg(dummny_contract_addr)
             .unwrap()

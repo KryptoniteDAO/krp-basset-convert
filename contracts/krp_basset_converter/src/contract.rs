@@ -1,14 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use crate::state::{read_config, store_config, Config};
+use crate::state::{
+    read_config, read_new_owner, store_config, store_new_owner, Config, NewOwnerAddr,
+};
 
 use basset::converter::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, NewOwnerResponse, QueryMsg,
 };
 use cosmwasm_std::{
-    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Uint128, WasmMsg,
+    from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 
 use crate::math::{convert_to_basset_decimals, convert_to_denom_decimals};
@@ -28,9 +30,19 @@ pub fn instantiate(
         owner: deps.api.addr_canonicalize(&msg.owner)?,
         basset_token_address: None,
         native_denom: None,
+        denom_decimals: None,
     };
 
     store_config(deps.storage).save(&conf)?;
+
+    store_new_owner(
+        deps.storage,
+        &NewOwnerAddr {
+            new_owner_addr: conf.owner.clone(),
+        },
+    )?;
+
+
 
     Ok(Response::default())
 }
@@ -42,9 +54,52 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::RegisterTokens {
             basset_token_address,
             native_denom,
-        } => register_tokens(deps, info, basset_token_address, native_denom),
+            denom_decimals,
+        } => register_tokens(
+            deps,
+            info,
+            basset_token_address,
+            native_denom,
+            denom_decimals,
+        ),
         ExecuteMsg::ConvertNativeToBasset {} => execute_convert_to_basset(deps, env, info),
+        ExecuteMsg::SetOwner { new_owner_addr } => {
+            let api = deps.api;
+            set_new_owner(deps, info, api.addr_validate(&new_owner_addr)?)
+        }
+        ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
     }
+}
+
+pub fn set_new_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_owner_addr: Addr,
+) -> StdResult<Response> {
+    let config = read_config(deps.as_ref().storage)?;
+    let mut new_owner = read_new_owner(deps.as_ref().storage)?;
+    let sender_raw = deps.api.addr_canonicalize(&info.sender.to_string())?;
+    if sender_raw != config.owner {
+        return Err(StdError::generic_err("unauthorized"));
+    }
+    new_owner.new_owner_addr = deps.api.addr_canonicalize(&new_owner_addr.to_string())?;
+    store_new_owner(deps.storage, &new_owner)?;
+
+    Ok(Response::default())
+}
+
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
+    let new_owner = read_new_owner(deps.as_ref().storage)?;
+    let sender_raw = deps.api.addr_canonicalize(&info.sender.to_string())?;
+    let mut config = read_config(deps.as_ref().storage)?;
+    if sender_raw != new_owner.new_owner_addr {
+        return Err(StdError::generic_err("unauthorized"));
+    }
+
+    config.owner = new_owner.new_owner_addr;
+    store_config(deps.storage).save(&config)?;
+
+    Ok(Response::default())
 }
 
 /// CW20 token receive handler.
@@ -55,7 +110,7 @@ pub fn receive_cw20(
     cw20_msg: Cw20ReceiveMsg,
 ) -> StdResult<Response> {
     let contract_addr = info.sender.clone();
-    match from_binary(&cw20_msg.msg) {
+    match from_json(&cw20_msg.msg) {
         Ok(Cw20HookMsg::ConvertBassetToNative {}) => {
             // only basset beth token contract can execute this message
             let conf = read_config(deps.storage)?;
@@ -75,6 +130,7 @@ pub fn register_tokens(
     info: MessageInfo,
     basset_token_address: String,
     native_denom: String,
+    denom_decimals: u8,
 ) -> StdResult<Response> {
     let mut config = read_config(deps.storage)?;
 
@@ -90,6 +146,10 @@ pub fn register_tokens(
     // if the token contract is  already register we cannot change the address
     if config.native_denom.is_none() {
         config.native_denom = Some(native_denom);
+    }
+
+    if config.denom_decimals.is_none() {
+        config.denom_decimals = Some(denom_decimals);
     }
 
     store_config(deps.storage).save(&config)?;
@@ -111,7 +171,7 @@ pub(crate) fn execute_convert_to_basset(
     }
     let coin_denom = config.native_denom.unwrap();
 
-    if info.funds.len() != 1  {
+    if info.funds.len() != 1 {
         return Err(StdError::generic_err(
             "The execute_convert_to_basset function only receives one registered native denom.",
         ));
@@ -125,8 +185,6 @@ pub(crate) fn execute_convert_to_basset(
             StdError::generic_err(format!("No {} assets are provided to deposit", coin_denom));
         });
 
-    let denom_decimals = 6u8;
-
     let basset_decimals = query_decimals(
         deps.as_ref(),
         deps.api
@@ -135,16 +193,19 @@ pub(crate) fn execute_convert_to_basset(
     )?;
 
     // should convert to basset decimals
-    let mint_amount =
-        convert_to_basset_decimals(coin.unwrap().amount, basset_decimals, denom_decimals)?;
-        
+    let mint_amount = convert_to_basset_decimals(
+        coin.unwrap().amount,
+        basset_decimals,
+        config.denom_decimals.unwrap(),
+    )?;
+
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps
                 .api
                 .addr_humanize(&config.basset_token_address.unwrap())?
                 .to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Mint {
+            msg: to_json_binary(&Cw20ExecuteMsg::Mint {
                 recipient: info.sender.to_string(),
                 amount: mint_amount,
             })?,
@@ -171,8 +232,6 @@ pub(crate) fn execute_convert_to_native(
         ));
     }
 
-    let denom_decimals = 6u8;
-
     let basset_decimals = query_decimals(
         deps.as_ref(),
         deps.api
@@ -181,7 +240,8 @@ pub(crate) fn execute_convert_to_native(
     )?;
 
     // should convert to native decimals
-    let return_amount = convert_to_denom_decimals(amount, basset_decimals, denom_decimals)?;
+    let return_amount =
+        convert_to_denom_decimals(amount, basset_decimals, config.denom_decimals.unwrap())?;
 
     Ok(Response::new()
         .add_messages(vec![
@@ -197,7 +257,7 @@ pub(crate) fn execute_convert_to_native(
                     .api
                     .addr_humanize(&config.basset_token_address.unwrap())?
                     .to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
+                msg: to_json_binary(&Cw20ExecuteMsg::Burn { amount })?,
                 funds: vec![],
             }),
         ])
@@ -212,11 +272,22 @@ pub(crate) fn execute_convert_to_native(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::NewOwner {} => to_json_binary(&query_new_owner(deps)?),
     }
 }
 
-fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+pub fn query_new_owner(deps: Deps) -> StdResult<NewOwnerResponse> {
+    let new_owner = read_new_owner(deps.storage)?;
+    Ok(NewOwnerResponse {
+        new_owner: deps
+            .api
+            .addr_humanize(&new_owner.new_owner_addr)?
+            .to_string(),
+    })
+}
+
+pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config: Config = read_config(deps.storage)?;
     let basset_token = if config.basset_token_address.is_some() {
         Some(

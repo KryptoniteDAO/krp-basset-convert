@@ -39,7 +39,7 @@ pub(crate) fn convert_to_basset_decimals(
         let result = amount.checked_div(decimal_fraction);
         if result.as_ref().unwrap().is_zero() {
             return Err(StdError::generic_err(format!(
-                "cannot convert; conversion is only possible for amounts greater than {} wormhole token",
+                "cannot convert; conversion is only possible for amounts greater than {} native token",
                 decimal_fraction
             )));
         }
